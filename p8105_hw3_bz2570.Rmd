@@ -1,0 +1,42 @@
+---
+title: "p8105_hw3_bz2570"
+author: "Boran Zhai"
+date: "2025-10-09"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(patchwork)
+```
+
+## Problem 1
+#### Import the data
+```{r}
+library(p8105.datasets)
+data("instacart")
+```
+
+#### A short description of the dataset(Inline R code)
+```{r}
+cat("Dataset size:", nrow(instacart), "rows,", ncol(instacart), "columns\n")
+cat("\nDataset structure:\n")
+str(instacart)
+cat("\nSample observations:\n")
+head(instacart)
+```
+The dataset instacart contains `r nrow(instacart)` rows and `r ncol(instacart)` columns, with the following variables: `r paste(names(instacart), collapse = ", ")`. <br/> 
+The dataset has the following structure:<br/>
+```{r}
+str(instacart)
+```
+For some key variables:<br/>
+
+
+Some illustrative examples of observations are as follows:
+```{r}
+head(instacart)
+```
+
+
+
