@@ -125,7 +125,7 @@ zip_codes_tidy <- read_csv("./zillow_data/Zip Codes.csv",
                            na = c(".", "NA", ""))|>
   janitor::clean_names()|>  
   relocate(zip_code) |> 
-  arrange(zip_code)
+  arrange(zip_code) 
 ```
 
 Import and clean ZIP ZORI dataset
@@ -139,9 +139,63 @@ zip_zori_tidy <- read_csv("./zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC.cs
   values_to = "zori"        
   ) |>
   mutate(
-    date = str_remove(date, "^x"),
-    date = str_replace(date,"-","_")
+    date = str_remove(date, "^x"),   
+    date = ymd(date),               
+    year = year(date)
     ) |>  
   relocate(region_name) |> 
-  arrange(region_name)
+  arrange(region_name) |>  
+  filter(!is.na(zori))
 ```
+
+
+#### There are 116 months between January 2015 and August 2024.<br/>
+```{r}
+zip_obs_count <- zip_zori_tidy  |> 
+  count(region_name, name = "observation_count") |> 
+  arrange(observation_count)
+# How many ZIP codes are observed 116 times? 
+zip_obs_116 <- zip_obs_count |> 
+  filter(observation_count == 116) |> 
+  nrow() 
+# How many are observed fewer than 10 times? 
+zip_obs_fewer_10 <- zip_obs_count  |> 
+  filter(observation_count < 10) |> 
+  nrow() 
+```
+The data shows that `r zip_obs_116` ZIP codes are observed 116 times from January 2015 to August 2024, while `r zip_obs_fewer_10` ZIP codes have fewer than 10 observations. This disparity can be attributed to fundamental differences in neighborhood characteristics and data collection practices. Established residential areas with stable rental markets and consistent transaction volumes support regular data reporting, whereas transitional neighborhoods, developing areas, or regions with limited rental activity produce intermittent data due to lower transaction frequency, evolving housing stock, or challenges in systematic data capture.
+
+#### Create a reader-friendly table showing the average rental price in each borough and year (not month). Comment on trends in this table.
+```{r}
+# Merge the datasets
+resulting_tidy_data <- zip_zori_tidy |>
+  left_join(zip_codes_tidy, by = c("region_name" = "zip_code"),relationship = "many-to-many") |> 
+  mutate(
+    borough = county_name)
+# create a table
+rental_price_table <- resulting_tidy_data |>
+  group_by(borough, year) |>
+  summarize(avg_rent = mean(zori, na.rm = TRUE), .groups = "drop")|>
+  pivot_wider(
+    names_from = year,
+    values_from = avg_rent
+  ) |>
+  knitr::kable(caption = "Average rental price in each borough and year")
+rental_price_table
+# comment the trends
+trend <- resulting_tidy_data |>
+  group_by(borough, year) |>
+  summarize(avg_zori = mean(zori, na.rm = TRUE), .groups = "drop") |>
+  group_by(borough) |>
+  summarize(
+    start_year = min(year),
+    end_year = max(year),
+    start_price = first(avg_zori[order(year)]),
+    end_price = last(avg_zori[order(year)]),
+    pct_change = (end_price - start_price) / start_price * 100,
+    years_covered = n_distinct(year),
+    .groups = "drop"
+  ) |> 
+  arrange(desc(pct_change))
+```
+The rental price analysis reveals distinct market dynamics across NYC's `r n_distinct(resulting_tidy_data$borough)` boroughs from `r min(trend$start_year)` to `r max(trend$end_year)`. `r trend$borough[1]` showed the strongest growth with a `r round(trend$pct_change[1], 1)`% increase in average rental price, rising from $`r round(trend$start_price[1], 0)` to $`r round(trend$end_price[1], 0)`. `r trend$borough[2]` experienced a `r round(trend$pct_change[2], 1)`% increase, with prices moving from $`r round(trend$start_price[2], 0)` to $`r round(trend$end_price[2], 0)`. `r trend$borough[3]` saw a `r round(trend$pct_change[3], 1)`% rise, from $`r round(trend$start_price[3], 0)` to $`r round(trend$end_price[3], 0)`. `r trend$borough[4]` showed a `r round(trend$pct_change[4], 1)`% growth, increasing from $`r round(trend$start_price[4], 0)` to $`r round(trend$end_price[4], 0)`. In contrast, `r trend$borough[nrow(trend)]` experienced more moderate changes at `r round(trend$pct_change[nrow(trend)], 1)`% growth, with average rental price moving from $`r round(trend$start_price[nrow(trend)], 0)` to $`r round(trend$end_price[nrow(trend)], 0)`.
