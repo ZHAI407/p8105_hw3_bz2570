@@ -117,3 +117,31 @@ mean_order_hod |>
 The analysis shows that Pink Lady Apples are typically ordered around `r round(mean(as.numeric(mean_order_hod[2,2:8])), 0)`:00, while Coffee Ice Cream is ordered around `r round(mean(as.numeric(mean_order_hod[1,2:8])), 0)`:00 on average, indicating that pink lady apples are always purchased earlier in the day than coffee ice-cream.
 
 ## Problem 2
+
+#### Import, clean, and tidy Zillow datasets
+Import and clean ZIP code dataset
+```{r}
+zip_codes_tidy <- read_csv("./zillow_data/Zip Codes.csv",
+                           na = c(".", "NA", ""))|>
+  janitor::clean_names()|>  
+  relocate(zip_code) |> 
+  arrange(zip_code)
+```
+
+Import and clean ZIP ZORI dataset
+```{r}
+zip_zori_tidy <- read_csv("./zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC.csv",
+                     na = c(".", "NA", "")) |>
+  janitor::clean_names() |> 
+  pivot_longer(
+  cols = starts_with("x20"),
+  names_to = "date",        
+  values_to = "zori"        
+  ) |>
+  mutate(
+    date = str_remove(date, "^x"),
+    date = str_replace(date,"-","_")
+    ) |>  
+  relocate(region_name) |> 
+  arrange(region_name)
+```
