@@ -124,6 +124,9 @@ Import and clean ZIP code dataset
 zip_codes_tidy <- read_csv("./zillow_data/Zip Codes.csv",
                            na = c(".", "NA", ""))|>
   janitor::clean_names()|>  
+  mutate(zip_code = as.character(zip_code),
+         borough = county
+         ) |>
   relocate(zip_code) |> 
   arrange(zip_code) 
 ```
@@ -134,20 +137,30 @@ zip_zori_tidy <- read_csv("./zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC.cs
                      na = c(".", "NA", "")) |>
   janitor::clean_names() |> 
   pivot_longer(
-  cols = starts_with("x20"),
+  cols = starts_with("x"),
   names_to = "date",        
   values_to = "zori"        
   ) |>
   mutate(
     date = str_remove(date, "^x"),   
-    date = ymd(date),               
-    year = year(date)
+    date = str_replace_all(date, "_", "-"),  
+    date = as.Date(date),               
+    year = year(date),
+    county_name = str_remove(county_name, " County$")
     ) |>  
+  filter(date >= as.Date("2015-01-01"), date <= as.Date("2024-08-31")) |>
   relocate(region_name) |> 
   arrange(region_name) |>  
   filter(!is.na(zori))
 ```
 
+Merge the datasets
+```{r}
+resulting_tidy_data <- zip_zori_tidy |>
+  mutate(region_name = as.character(region_name)) |> 
+  left_join(zip_codes_tidy, by = c("region_name" = "zip_code")) |> 
+  filter(!is.na(borough))
+```
 
 #### There are 116 months between January 2015 and August 2024.<br/>
 ```{r}
@@ -165,13 +178,8 @@ zip_obs_fewer_10 <- zip_obs_count  |>
 ```
 The data shows that `r zip_obs_116` ZIP codes are observed 116 times from January 2015 to August 2024, while `r zip_obs_fewer_10` ZIP codes have fewer than 10 observations. This disparity can be attributed to fundamental differences in neighborhood characteristics and data collection practices. Established residential areas with stable rental markets and consistent transaction volumes support regular data reporting, whereas transitional neighborhoods, developing areas, or regions with limited rental activity produce intermittent data due to lower transaction frequency, evolving housing stock, or challenges in systematic data capture.
 
-#### Create a reader-friendly table showing the average rental price in each borough and year (not month). Comment on trends in this table.
+#### Create a rtable showing the average rental price in each borough and year
 ```{r}
-# Merge the datasets
-resulting_tidy_data <- zip_zori_tidy |>
-  left_join(zip_codes_tidy, by = c("region_name" = "zip_code"),relationship = "many-to-many") |> 
-  mutate(
-    borough = county_name)
 # create a table
 rental_price_table <- resulting_tidy_data |>
   group_by(borough, year) |>
@@ -180,8 +188,9 @@ rental_price_table <- resulting_tidy_data |>
     names_from = year,
     values_from = avg_rent
   ) |>
-  knitr::kable(caption = "Average rental price in each borough and year")
+  knitr::kable(caption = "Average rental price in each borough and year", digits = 0)
 rental_price_table
+
 # comment the trends
 trend <- resulting_tidy_data |>
   group_by(borough, year) |>
@@ -199,3 +208,122 @@ trend <- resulting_tidy_data |>
   arrange(desc(pct_change))
 ```
 The rental price analysis reveals distinct market dynamics across NYC's `r n_distinct(resulting_tidy_data$borough)` boroughs from `r min(trend$start_year)` to `r max(trend$end_year)`. `r trend$borough[1]` showed the strongest growth with a `r round(trend$pct_change[1], 1)`% increase in average rental price, rising from $`r round(trend$start_price[1], 0)` to $`r round(trend$end_price[1], 0)`. `r trend$borough[2]` experienced a `r round(trend$pct_change[2], 1)`% increase, with prices moving from $`r round(trend$start_price[2], 0)` to $`r round(trend$end_price[2], 0)`. `r trend$borough[3]` saw a `r round(trend$pct_change[3], 1)`% rise, from $`r round(trend$start_price[3], 0)` to $`r round(trend$end_price[3], 0)`. `r trend$borough[4]` showed a `r round(trend$pct_change[4], 1)`% growth, increasing from $`r round(trend$start_price[4], 0)` to $`r round(trend$end_price[4], 0)`. In contrast, `r trend$borough[nrow(trend)]` experienced more moderate changes at `r round(trend$pct_change[nrow(trend)], 1)`% growth, with average rental price moving from $`r round(trend$start_price[nrow(trend)], 0)` to $`r round(trend$end_price[nrow(trend)], 0)`.
+
+#### Make a plot showing NYC Rental Prices within ZIP codes for all available years.
+```{r}
+# Create rental price plot using techniques from your weather data examples
+rental_price_plot <- resulting_tidy_data |> 
+  ggplot(aes(x = date, y = zori, color = borough)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(se = FALSE, size = 1) +
+  facet_wrap(. ~ borough) +
+  labs(
+    title = "NYC Rental Prices by Borough (2015-2024)",
+    x = "Year",
+    y = "Rental Price",
+    color = "Borough",
+    caption = "Data from the Zillow ZORI Dataset"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  scale_color_viridis_d()
+print(rental_price_plot)
+```
+
+Comment:<br/>
+A plot displaying New York City rental prices by borough from 2015 to 2024 reveals distinct trends across different boroughs. The Bronx (purple) exhibits a steady upward trajectory in rental prices throughout the period. Kings County (blue) shows a pattern of gradual increase, with a more pronounced rise in the latter years. New York County (teal) demonstrates notable fluctuations yet sustains a long-term upward trend, and its overall rental price levels are relatively high. Queens (green) features a consistent upward trend, with rental prices increasing steadily from a moderate initial baseline. Richmond County (yellow) has missing data in the early years; when data become available, it starts with relatively low rental prices and undergoes a gradual increase in the later years, although its overall rental level remains lower compared to most other boroughs.
+
+#### Compute and make a plot showingthe average rental price within each ZIP code over each month in 2023
+```{r}
+# Compute average rental price for each ZIP code in 2023
+rental_prize_2023 <- resulting_tidy_data |> 
+  filter(year(date) == 2023) |> 
+  group_by(borough, zip_code = region_name) |> 
+  summarize(
+    avg_rent_2023 = mean(zori, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Create distribution plot using boxplots
+rental_boxplot_2023 <- rental_prize_2023 |> 
+  ggplot(aes(x = borough, y = avg_rent_2023)) +
+  geom_boxplot(aes(fill = borough), alpha = 0.7) +
+  labs(
+    title = "Distribution of Average Rental Prices by Borough (2023)",
+    x = "Borough", 
+    y = "Average Rental Price",
+    caption = "Data from Zillow Dataset"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16)
+  ) +
+  scale_fill_manual(values = c("#BDB2FF","#FFADAD", "#FDFFB6", "#CAFFBF","#9BF6FF"))
+
+print(rental_boxplot_2023)
+```
+Comment: <br/>
+This box plot shows the distribution of average rental prices across NYC boroughs in 2023. New York Borough has the highest average rental prices, featuring the widest range with notable high outliers and a median over $4000. Kings Borough has a lower median and range than New York but higher ones than the Bronx, Queens and Richmond. The Bronx has a median less than 2500. Queens has a median slightly above that of the Bronx, with a narrower range. Richmond Borough has the lowest average rental prices and the narrowest distribution among all boroughs.
+
+#### Combine and export the plots
+```{r}
+combined_rental_plot <- rental_price_plot / rental_boxplot_2023
+print(combined_rental_plot)
+ggsave("results/combined_rental_plot.png", combined_rental_plot, width = 15, height = 20)
+```
+
+## Problem 3
+#### Load, tidy, merge, and otherwise organize the data sets. 
+```{r}
+# Load and tidy the data sets
+accel__clean = read_csv("./data/nhanes_accel.csv") |>
+  janitor::clean_names()
+
+covar_clean <- read_csv("./data/nhanes_covar.csv", skip = 4) |>
+  janitor::clean_names() |>
+  filter(age >= 21) |>
+  drop_na() |>
+  mutate(
+    sex = factor(sex, levels = c(1, 2), labels = c("Male", "Female")),
+    education = factor(education, levels = 1:3, 
+                      labels = c("Less than high school", 
+                                "High school equivalent", 
+                                "More than high school"))
+  )
+# Merge the data sets
+nhanes_clean <- covar_clean |>
+  left_join(accel__clean, by = c("seqn"))
+```
+
+#### Create a table and a visualization
+```{r}
+# Produce a table for the number of men and women in each education category
+edu_sex_table <- nhanes_clean |>
+  count(education, sex) |>
+  pivot_wider(names_from = sex, values_from = n)
+knitr::kable(edu_sex_table,caption = "The table for the number of men and women in each education category")
+
+# Create a visualization of the age distributions for men and women in each education category
+age_dist_plot <- nhanes_clean |>
+  ggplot(aes(x = age, fill = sex)) +
+  geom_histogram(position = "dodge", alpha = 0.7, binwidth = 5) +
+  facet_grid(education ~ .) +
+  labs(
+    title = "Age Distribution by Sex and Education Level",
+    x = "Age",
+    y = "Count",
+    fill = "Sex"
+  )+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16)
+  ) 
+print(age_dist_plot)
+```
+Comment:
+The table indicates that for “Less than high school”, male (27) and female (28) counts are nearly equal; “High school equivalent” has more males (35) than females (23); and “More than high school” has slightly more females (59) than males (56). The histogram visualizes age distributions by sex across education levels: “Less than high school” shows relatively balanced sex counts across ages; “High school equivalent” has higher male counts in some age bins; and “More than high school” features a notable peak in female counts for younger ages (around 30–40) with females often matching or exceeding male counts in most age groups.
+
