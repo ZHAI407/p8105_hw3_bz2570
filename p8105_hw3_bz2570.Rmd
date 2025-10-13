@@ -17,7 +17,7 @@ library(p8105.datasets)
 data("instacart")
 ```
 
-#### A short description of the dataset(Inline R code)
+#### A short description of the dataset (Inline R code)
 The dataset instacart contains `r nrow(instacart)` rows and `r ncol(instacart)` columns, with the following variables: `r paste(names(instacart), collapse = ", ")`. <br/> 
 
 The dataset has the following structure:<br/>
@@ -310,7 +310,7 @@ knitr::kable(edu_sex_table,caption = "The table for the number of men and women 
 # Create a visualization of the age distributions for men and women in each education category
 age_dist_plot <- nhanes_clean |>
   ggplot(aes(x = age, fill = sex)) +
-  geom_histogram(position = "dodge", alpha = 0.7, binwidth = 5) +
+  geom_histogram(position = "dodge", alpha = 0.8, binwidth = 4) +
   facet_grid(education ~ .) +
   labs(
     title = "Age Distribution by Sex and Education Level",
@@ -320,10 +320,84 @@ age_dist_plot <- nhanes_clean |>
   )+
   theme_minimal() +
   theme(
+    legend.position = "bottom",
     plot.title = element_text(hjust = 0.5, face = "bold", size = 16)
   ) 
 print(age_dist_plot)
 ```
-Comment:
+Comment:<br/>
 The table indicates that for “Less than high school”, male (27) and female (28) counts are nearly equal; “High school equivalent” has more males (35) than females (23); and “More than high school” has slightly more females (59) than males (56). The histogram visualizes age distributions by sex across education levels: “Less than high school” shows relatively balanced sex counts across ages; “High school equivalent” has higher male counts in some age bins; and “More than high school” features a notable peak in female counts for younger ages (around 30–40) with females often matching or exceeding male counts in most age groups.
+
+#### Aggregate across minutes to create a total activity variable for each participant
+```{r}
+nhanes_total_activity <- nhanes_clean |>
+  mutate(total_activity = rowSums(across(starts_with("min")), na.rm = TRUE)) |>
+  select(seqn, sex, age, bmi, education, total_activity)
+```
+
+#### Plot total activities (y-axis) against age (x-axis)
+```{r}
+total_activity_plot <- nhanes_total_activity |>
+  ggplot(aes(x = age, y = total_activity, color = sex)) + 
+  geom_point(alpha = 0.5) + 
+  geom_smooth(se = FALSE) + 
+  facet_wrap(~ education) + 
+  labs(
+    title = "Total activities against age", 
+    x = "Age", 
+    y = "Total Activity (MIMS)", 
+    color = "Sex"
+  ) +
+  theme_minimal()+
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  )
+print(total_activity_plot)
+```
+Comment: <br/>
+This plot shows total daily activity against age, comparing males (represented by the red line and points) and females (represented by the teal line and points) across three education groups. For individuals with less than a high school education, total activity decreases with age for both sexes, where males start with higher activity levels but see a sharper decline after 60. Among those with a high school equivalent education, activity peaks around middle age (40) for both male and female, and females maintain higher activity levels. For people with more than a high school education, activity remains more stable across different ages untile 60, and females consistently have higher total activity than males.
+
+#### Create three-panel plot for 24-hour activity time courses for each education level and use color to indicate sex
+```{r}
+activity_24_plot <- nhanes_clean |>
+  pivot_longer(
+    cols = starts_with("min"), 
+    names_to = "minute", 
+    values_to = "mims_value",
+    names_prefix = "min"
+  ) |>
+  mutate(minute = as.numeric(minute)) |> 
+  group_by(education, sex, minute) |>
+  summarize(mean_mims = mean(mims_value, na.rm = TRUE), 
+            .groups = "drop") |>
+  ggplot(aes(x = minute, y = mean_mims, color = sex)) + 
+  geom_line(alpha = 0.7) + 
+  geom_smooth(se = FALSE, linewidth = 1.2) +
+  facet_wrap(~ education, nrow = 1) +
+  labs(
+    title = "24-Hour Activity Time Courses by Education Level and Sex", 
+    x = "Time of Day", 
+    y = "Average MIMS", 
+    color = "Sex"
+  ) + 
+  scale_x_continuous(
+    breaks = c(0, 360, 720, 1080, 1440), 
+    labels = c("0:00", "6:00", "12:00", "18:00", "24:00") 
+  ) +
+    theme_minimal()+
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+    )
+print(activity_24_plot)
+```
+Comment: <br/>
+This plot shows 24-hour activity time courses across three education levels, with color distinguishing sex (red for males, teal for females). Across all education levels, both sexes follow a similar daily pattern that activity rises in the morning, peaks around midday, and declines in the evening. However, females consistently show higher average activity than males during peak hours (around midday) in every education group. Additionally, the magnitude of peak activity varies by education, with the “Less than high school” group having the highest peak. Overall, while the daily activity rhythm is similar, gender differences and the changes in peak activity amplitude vary with education level.
+
+```{r}
+ggsave("results/age_dist_plot.png", age_dist_plot)
+ggsave("results/total_activity_plot.png", total_activity_plot)
+ggsave("results/activity_24_plot.png", activity_24_plot)
+```
 
