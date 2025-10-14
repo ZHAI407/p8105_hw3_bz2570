@@ -50,13 +50,12 @@ aisles <- instacart |>
   group_by(aisle) |> 
   summarize(total_items = n()) |> 
   arrange(desc(total_items))
-cat("Total number of aisles:", nrow(aisles), "\n")
 
 aisles |> 
   head(5) |> 
   knitr::kable(digits = 1)
 ```
-The top 5 aisles are `r paste(head(aisles$aisle, 5), collapse = ", ")`. <br/>
+There are `r nrow(aisles)` aisles. The top 5 aisles are `r paste(head(aisles$aisle, 5), collapse = ", ")`. <br/>
 
 #### 2. Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. 
 ```{r}
@@ -79,7 +78,7 @@ aisle_plot <- aisle_data |>
   theme_minimal()
 print(aisle_plot)
 ```
-The plot shows the number of items ordered in each aisle, and it is ordered by descending order.
+<br/>The plot shows the number of items ordered in each aisle, and it is ordered by descending order.
 
 #### 3. Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
 ```{r}
