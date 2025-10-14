@@ -50,13 +50,12 @@ aisles <- instacart |>
   group_by(aisle) |> 
   summarize(total_items = n()) |> 
   arrange(desc(total_items))
-cat("Total number of aisles:", nrow(aisles), "\n")
 
 aisles |> 
   head(5) |> 
   knitr::kable(digits = 1)
 ```
-The top 5 aisles are `r paste(head(aisles$aisle, 5), collapse = ", ")`. <br/>
+There are `r nrow(aisles)` aisles. The top 5 aisles are `r paste(head(aisles$aisle, 5), collapse = ", ")`. <br/>
 
 #### 2. Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. 
 ```{r}
