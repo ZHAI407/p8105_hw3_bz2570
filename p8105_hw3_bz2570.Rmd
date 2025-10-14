@@ -23,7 +23,6 @@ The dataset instacart contains `r nrow(instacart)` rows and `r ncol(instacart)` 
 The dataset has the following structure:<br/>
 ```{r}
 str(instacart)
-
 ```
 
 Description for some key variables:<br/>
@@ -43,6 +42,7 @@ instacart |>
 head() |> 
   knitr::kable()
 ```
+For the product Bulgarian Yogurt, the data shows that it was the first item added to the cart by user 112108 in their 4th overall order. This purchase was a reorder, indicating the user's prior satisfaction with the product. The order was placed on a Thursday at 10 AM, coming 9 days after their previous order. This yogurt is categorized in the yogurt aisle within the dairy eggs department.
 
 #### 1. How many aisles, and which are most popular?
 ```{r}
