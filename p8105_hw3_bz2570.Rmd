@@ -108,10 +108,9 @@ mean_order_hod <- instacart |>       # mean hour of the day
     names_from = order_dow,
     values_from = mean_order_hour
   )
-names(mean_order_hod) <-c("Product", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
-cat("Following table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week:")
+names(mean_order_hod) <- c("Product", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
 mean_order_hod |> 
-  knitr::kable()
+  knitr::kable(caption = "The mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week")
 ```
 The analysis shows that Pink Lady Apples are typically ordered around `r round(mean(as.numeric(mean_order_hod[2,2:8])), 0)`:00, while Coffee Ice Cream is ordered around `r round(mean(as.numeric(mean_order_hod[1,2:8])), 0)`:00 on average, indicating that pink lady apples are always purchased earlier in the day than coffee ice-cream.
 
