@@ -122,10 +122,12 @@ Import and clean ZIP code dataset
 ```{r}
 zip_codes_tidy <- read_csv("./zillow_data/Zip Codes.csv",
                            na = c(".", "NA", ""))|>
-  janitor::clean_names()|>  
+  janitor::clean_names() |>   
   mutate(zip_code = as.character(zip_code),
          borough = county
          ) |>
+  select(-county) |> 
+  distinct(zip_code, .keep_all = TRUE) |>
   relocate(zip_code) |> 
   arrange(zip_code) 
 ```
@@ -157,7 +159,7 @@ Merge the datasets
 ```{r}
 resulting_tidy_data <- zip_zori_tidy |>
   mutate(region_name = as.character(region_name)) |> 
-  left_join(zip_codes_tidy, by = c("region_name" = "zip_code")) |> 
+  left_join(zip_codes_tidy, by = c("region_name" = "zip_code")) |>
   filter(!is.na(borough))
 ```
 
